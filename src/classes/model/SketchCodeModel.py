@@ -2,9 +2,9 @@ from __future__ import absolute_import
 
 from keras.models import Model, Sequential, model_from_json
 from keras.callbacks import ModelCheckpoint, CSVLogger, Callback
-from keras.layers.core import Dense, Dropout, Flatten
+from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Embedding, GRU, TimeDistributed, RepeatVector, LSTM, concatenate , Input, Reshape, Dense
-from keras.layers.convolutional import Conv2D
+from keras.layers import Conv2D
 from keras.optimizers import RMSprop
 
 from .ModelUtils import *
