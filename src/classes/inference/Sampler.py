@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import sys
 import os
 import shutil
@@ -20,7 +18,8 @@ class Sampler:
 
     def __init__(self, model_json_path=None, model_weights_path=None):
         self.tokenizer, self.vocab_size = Dataset.load_vocab()
-        self.model = self.load_model(model_json_path, model_weights_path)
+        self.model_json_path = model_json_path
+        self.model_weights_path = model_weights_path
 
     def convert_batch_of_images(self, output_folder, pngs_path, get_corpus_bleu, original_guis_filepath, style):
 
@@ -28,14 +27,13 @@ class Sampler:
         all_filenames.sort()
         generated_count = 0
         for filename in all_filenames:
-            if filename.find('.png') != -1:
-                png_path = "{}/{}".format(pngs_path, filename)
+            if filename.endswith('.png'):
+                png_path = os.path.join(pngs_path, filename)
                 try:
                     self.convert_single_image(output_folder, png_path, print_generated_output=0, get_sentence_bleu=0, original_gui_filepath=png_path, style=style)
                     generated_count += 1
-                except:
-                    print("Error with GUI / HTML generation:", sys.exc_info()[0])
-                    print(sys.exc_info())
+                except Exception as e:
+                    print("Error with GUI / HTML generation for {}: {}".format(filename, e))
                     continue
         print("Generated code for {} images".format(generated_count))
 
@@ -43,16 +41,15 @@ class Sampler:
             print("BLEU score: {}".format(Evaluator.get_corpus_bleu(original_guis_filepath, output_folder)))
 
     def convert_single_image(self, output_folder, png_path, print_generated_output, get_sentence_bleu, original_gui_filepath, style):
-
         # Retrieve sample ID
-        png_filename = os.path.basename(png_path)
-        if png_filename.find('.png') == -1:
-            raise ValueError("Image is not a png!")
-        sample_id = png_filename[:png_filename.find('.png')]
+        sample_id = os.path.splitext(os.path.basename(png_path))[0]
+
+        # Load a new instance of the model for each image prediction
+        model = self.load_model(self.model_json_path, self.model_weights_path)
 
         # Generate GUI
         print("Generating code for sample ID {}".format(sample_id))
-        generated_gui, gui_output_filepath= self.generate_gui(png_path, print_generated_output=print_generated_output, output_folder=output_folder, sample_id=sample_id)
+        generated_gui, gui_output_filepath = self.generate_gui(model, png_path, print_generated_output=print_generated_output, output_folder=output_folder, sample_id=sample_id)
 
         # Generate HTML
         generated_html = self.generate_html(generated_gui, sample_id, print_generated_output=print_generated_output, output_folder=output_folder, style=style)
@@ -60,11 +57,6 @@ class Sampler:
         # Get BLEU
         if get_sentence_bleu == 1 and (original_gui_filepath is not None):
             print("BLEU score: {}".format(Evaluator.get_sentence_bleu(original_gui_filepath, gui_output_filepath)))
-
-
-    ##########################################
-    ####### PRIVATE METHODS ##################
-    ##########################################
 
     def load_model(self, model_json_path, model_weights_path):
         json_file = open(model_json_path, 'r')
@@ -74,8 +66,8 @@ class Sampler:
         loaded_model.load_weights(model_weights_path)
         print("\nLoaded model from disk")
         return loaded_model
-
-    def generate_gui(self, png_path, print_generated_output, sample_id, output_folder):
+    
+    def generate_gui(self, model, png_path, print_generated_output, sample_id, output_folder):
         test_img_preprocessor = ImagePreprocessor()
         img_features = test_img_preprocessor.get_img_features(png_path)
 
@@ -84,7 +76,7 @@ class Sampler:
         for i in range(150):
             sequence = self.tokenizer.texts_to_sequences([in_text])[0]
             sequence = pad_sequences([sequence], maxlen=MAX_LENGTH)
-            yhat = self.model.predict([photo, sequence], verbose=0)
+            yhat = model.predict([photo, sequence], verbose=0)
             yhat = np.argmax(yhat)
             word = self.word_for_id(yhat)
             if word is None:
@@ -95,7 +87,7 @@ class Sampler:
 
         generated_gui = in_text.split()
 
-        if print_generated_output is 1:
+        if print_generated_output:
             print("\n=========\nGenerated GUI code:")
             print(generated_gui)
 
@@ -104,16 +96,15 @@ class Sampler:
         return generated_gui, gui_output_filepath
 
     def generate_html(self, gui_array, sample_id, print_generated_output, output_folder, style='default'):
-
         compiler = Compiler(style)
         compiled_website = compiler.compile(gui_array)
 
-        if print_generated_output is 1:
+        if print_generated_output:
             print("\nCompiled HTML:")
             print(compiled_website)
 
         if compiled_website != 'HTML Parsing Error':
-            output_filepath = "{}/{}.html".format(output_folder, sample_id)
+            output_filepath = os.path.join(output_folder, "{}.html".format(sample_id))
             with open(output_filepath, 'w') as output_file:
                 output_file.write(compiled_website)
                 print("Saved generated HTML to {}".format(output_filepath))
@@ -125,13 +116,7 @@ class Sampler:
         return None
 
     def write_gui_to_disk(self, gui_array, sample_id, output_folder):
-        gui_output_filepath = "{}/{}.gui".format(output_folder, sample_id)
+        gui_output_filepath = os.path.join(output_folder, "{}.gui".format(sample_id))
         with open(gui_output_filepath, 'w') as out_f:
             out_f.write(' '.join(gui_array))
         return gui_output_filepath
-
-
-
-
-
-
