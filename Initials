@@ -1,1 +1,24 @@
+CNN architecture detailed description
+Input Image : The image input to the model is first resized to 256×256 pixels. This ensures that all images enter the model with the same dimensions.
+
+Convolutional Layer : The image passes through the first convolutional layer. This layer uses a receptive field (filter size) of 3×3 and scans the image with a stride of 1. A stride of 1 means the filter is applied by moving one pixel over the image. This process helps extract features from images.
+
+Depth of convolutional layers : The first convolutional layer has 32 filters, producing 32 different feature maps. The second layer uses 64 filters, and the third layer uses 128 filters. Each layer allows more complex features to be extracted from the image.
+
+Max Pooling : After the convolution operation is applied twice, the image is downsampled through Max Pooling. Max pooling is the process of reducing dimensionality by selecting the largest value from a feature map. This reduces the computational burden of the model and helps prevent overfitting.
+
+Fully Connected Layers : After passing through the convolution and pooling layers, the network passes through two fully connected layers. Each layer has 1024 neurons, which helps in generating output vectors of fixed size. Here the Rectified Linear Unit (ReLU) activation function is used.
+
+Through this process, the input image is encoded by the model into a fixed-size output vector. This vector contains important features of the image and can be used in later processes (e.g. GUI code generation).
+
+
+
+ The provided figure illustrates the architecture of the pix2code model, which includes encoding the GUI image with a CNN, encoding the context (sequence of DSL tokens) with a stack of LSTM layers, and decoding the concatenated feature vectors with another stack of LSTM layers. Sampling is done with a softmax layer, and the resulting sequence of DSL tokens is compiled into the desired target language using traditional compiler design techniques.
+
+
+
+
+
+
+
 
