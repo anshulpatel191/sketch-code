@@ -5,8 +5,10 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, Callback
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Embedding, GRU, TimeDistributed, RepeatVector, LSTM, concatenate , Input, Reshape, Dense
 from keras.layers import Conv2D
-from keras.optimizers import RMSprop
-
+from keras.optimizers import Adam
+from keras.layers import BatchNormalization
+from keras.optimizers import SGD
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from .ModelUtils import *
 from classes.dataset.Dataset import *
 
@@ -84,7 +86,7 @@ class SketchCodeModel():
 
         # Compile the model
         self.model = Model(inputs=[visual_input, language_input], outputs=decoder)
-        optimizer = RMSprop(lr=0.0001, clipvalue=1.0)
+        optimizer = Adam(lr=0.0001)
         self.model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 
     def train(self, training_path, validation_path, epochs):
@@ -103,16 +105,19 @@ class SketchCodeModel():
         self.save_model()
 
     def construct_callbacks(self, validation_path):
-        checkpoint_filepath="{}/".format(self.model_output_path) + "weights-epoch-{epoch:04d}--val_loss-{val_loss:.4f}--loss-{loss:.4f}.h5"
+        checkpoint_filepath = "{}/".format(self.model_output_path) + "weights-epoch-{epoch:04d}--val_loss-{val_loss:.4f}--loss-{loss:.4f}.h5"
         csv_logger = CSVLogger("{}/training_val_losses.csv".format(self.model_output_path))
         checkpoint = ModelCheckpoint(checkpoint_filepath,
                                     verbose=0,
                                     save_weights_only=True,
                                     save_best_only=True,
-                                    mode= 'min',
+                                    mode='min',
                                     period=2)
-        callbacks_list = [checkpoint, csv_logger]
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, min_lr=1e-6)
+        callbacks_list = [checkpoint, csv_logger, early_stopping, reduce_lr]
         return callbacks_list
+
 
 
 
