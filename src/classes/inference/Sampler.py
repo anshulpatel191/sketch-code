@@ -20,6 +20,7 @@ class Sampler:
         self.tokenizer, self.vocab_size = Dataset.load_vocab()
         self.model_json_path = model_json_path
         self.model_weights_path = model_weights_path
+        self.model = None  # Initialize model attribute
 
     def convert_batch_of_images(self, output_folder, pngs_path, get_corpus_bleu, original_guis_filepath, style):
 
@@ -44,12 +45,12 @@ class Sampler:
         # Retrieve sample ID
         sample_id = os.path.splitext(os.path.basename(png_path))[0]
 
-        # Load a new instance of the model for each image prediction
-        model = self.load_model(self.model_json_path, self.model_weights_path)
+        # Load or reset the model for each image prediction
+        self.load_or_reset_model()
 
         # Generate GUI
         print("Generating code for sample ID {}".format(sample_id))
-        generated_gui, gui_output_filepath = self.generate_gui(model, png_path, print_generated_output=print_generated_output, output_folder=output_folder, sample_id=sample_id)
+        generated_gui, gui_output_filepath = self.generate_gui(self.model, png_path, print_generated_output=print_generated_output, output_folder=output_folder, sample_id=sample_id)
 
         # Generate HTML
         generated_html = self.generate_html(generated_gui, sample_id, print_generated_output=print_generated_output, output_folder=output_folder, style=style)
@@ -57,6 +58,15 @@ class Sampler:
         # Get BLEU
         if get_sentence_bleu == 1 and (original_gui_filepath is not None):
             print("BLEU score: {}".format(Evaluator.get_sentence_bleu(original_gui_filepath, gui_output_filepath)))
+
+    def load_or_reset_model(self):
+        if self.model is None:
+            # Load the model if it's not already loaded
+            self.model = self.load_model(self.model_json_path, self.model_weights_path)
+        else:
+            # Reset the model by reinitializing it
+            del self.model
+            self.model = self.load_model(self.model_json_path, self.model_weights_path)
 
     def load_model(self, model_json_path, model_weights_path):
         json_file = open(model_json_path, 'r')
