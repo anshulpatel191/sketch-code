@@ -23,7 +23,7 @@ class SketchCodeModel():
         self.model_output_path = model_output_path
 
         # If we have an existing model json / weights, load in that model
-        if model_json_file is not None and model_weights_file is not None:
+        if all([model_json_file, model_weights_file]):
             self.model = self.load_model(model_json_file, model_weights_file)
             optimizer = RMSprop(lr=0.0001, clipvalue=1.0)
             self.model.compile(loss='categorical_crossentropy', optimizer=optimizer)
@@ -117,10 +117,3 @@ class SketchCodeModel():
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, min_lr=1e-6)
         callbacks_list = [checkpoint, csv_logger, early_stopping, reduce_lr]
         return callbacks_list
-
-
-
-
-
-
-
